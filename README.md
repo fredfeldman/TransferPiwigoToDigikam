@@ -1,6 +1,6 @@
 My first public repository
 
-Used Github Chat to make this app.
+Used Github Chat to make this app, and compiled in Visual Studio Community 2026.
 
 I was able to run on my Piwigo website and got most of the files to my local computer.  I had 89 files out of 9000 fail to transfer.  Going to look into why the 89 files did not transfer.
 

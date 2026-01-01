@@ -2,6 +2,16 @@
 
 This application transfers images from a Piwigo website to a DigiKam collection, preserving categories, tags, and metadata.
 
+## Recent Improvements
+
+- **Robust Network Handling**: Added 30-second timeout and automatic retry logic (3 attempts) for network requests
+- **Better Error Reporting**: Enhanced error messages with specific HTTP status codes (404, 403, 401)
+- **File Name Sanitization**: Automatic handling of invalid characters in file and folder names
+- **Duplicate Prevention**: Automatic file name conflict resolution
+- **URL Validation**: Validates Piwigo URL format before attempting connection
+- **Empty URL Detection**: Skips images with missing download URLs instead of failing
+- **Detailed Progress**: Tracks successful, failed, and skipped images separately
+
 ## Features
 
 - Connects to Piwigo website via API
@@ -10,6 +20,8 @@ This application transfers images from a Piwigo website to a DigiKam collection,
 - Preserves category structure as folders
 - Imports tags and image metadata
 - Displays real-time progress
+- Handles network failures gracefully with automatic retry
+- Sanitizes file names to prevent errors
 
 ## Setup Instructions
 
@@ -56,6 +68,12 @@ If Visual Studio doesn't automatically include the new files, right-click on the
 4. Select an output directory where the DigiKam collection will be created
 5. Click "Start Transfer"
 6. Wait for the transfer to complete
+
+The application will automatically:
+- Retry failed downloads up to 3 times
+- Skip images with missing URLs
+- Handle file name conflicts
+- Sanitize invalid characters in paths and filenames
 
 ## Output
 
@@ -106,10 +124,48 @@ If you get compilation errors about missing types:
 - Ensure your Piwigo site allows API access
 - Some sites may require additional authentication
 
+### Transfer Failures
+
+The application now handles most common transfer failures automatically:
+
+**Network Timeouts:**
+- Automatically retries up to 3 times with exponential backoff
+- Increase timeout if needed for slow connections
+
+**404 Not Found:**
+- Image file was deleted or moved on the server
+- These will be logged and skipped
+
+**403/401 Access Denied:**
+- Authentication issue with the image URL
+- Check Piwigo permissions settings
+
+**Empty URL:**
+- Some images may not have download URLs in the API response
+- These are automatically skipped
+
+**Invalid File Names:**
+- The application automatically sanitizes file names
+- Invalid characters are replaced with underscores
+
+**File Name Conflicts:**
+- Duplicate file names get automatic sequential numbering (file_1.jpg, file_2.jpg, etc.)
+
 ### Permission Errors
 
 - Ensure you have write permissions to the output directory
 - Run Visual Studio as Administrator if needed
+
+### Why Some Transfers Fail
+
+Based on the user's experience with 89 failures out of 9000:
+- Images may have missing or invalid URLs in the Piwigo database
+- Some images may have been deleted but metadata still exists
+- Network issues during transfer (now handled with retry)
+- Invalid characters in file names (now automatically sanitized)
+- Permission issues on the Piwigo server
+
+The improved error logging will now show specific reasons for each failure in the status window.
 
 ## Requirements
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -47,24 +48,51 @@ namespace TransferPiwigoToDigikam
             if (string.IsNullOrWhiteSpace(txtPiwigoUrl.Text))
             {
                 MessageBox.Show("Please enter the Piwigo URL.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtPiwigoUrl.Focus();
+                return;
+            }
+
+            // Validate URL format
+            var piwigoUrl = txtPiwigoUrl.Text.Trim();
+            if (!Uri.TryCreate(piwigoUrl, UriKind.Absolute, out Uri uriResult) ||
+                (uriResult.Scheme != Uri.UriSchemeHttp && uriResult.Scheme != Uri.UriSchemeHttps))
+            {
+                MessageBox.Show("Please enter a valid URL (e.g., https://your-site.com).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtPiwigoUrl.Focus();
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(txtUsername.Text))
             {
                 MessageBox.Show("Please enter your username.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtUsername.Focus();
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(txtPassword.Text))
             {
                 MessageBox.Show("Please enter your password.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtPassword.Focus();
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(txtOutputDirectory.Text))
             {
                 MessageBox.Show("Please select an output directory.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                btnBrowse.Focus();
+                return;
+            }
+
+            // Validate output directory is accessible
+            try
+            {
+                var testPath = Path.Combine(txtOutputDirectory.Text.Trim(), ".test");
+                Directory.CreateDirectory(Path.GetDirectoryName(testPath));
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Cannot access output directory:\n\n{ex.Message}", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                btnBrowse.Focus();
                 return;
             }
 
@@ -75,8 +103,13 @@ namespace TransferPiwigoToDigikam
                 progressBar.Value = 0;
                 txtStatus.Clear();
 
+                AddStatusMessage("Starting transfer...");
+                AddStatusMessage($"Piwigo URL: {piwigoUrl}");
+                AddStatusMessage($"Output Directory: {txtOutputDirectory.Text.Trim()}");
+                AddStatusMessage("");
+
                 _transferService = new ImageTransferService(
-                    txtPiwigoUrl.Text.Trim(),
+                    piwigoUrl,
                     txtUsername.Text.Trim(),
                     txtPassword.Text,
                     txtOutputDirectory.Text.Trim()
@@ -91,8 +124,12 @@ namespace TransferPiwigoToDigikam
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"An error occurred during transfer:\n\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                AddStatusMessage($"ERROR: {ex.Message}");
+                var errorMsg = ex.InnerException != null 
+                    ? $"{ex.Message}\n\nDetails: {ex.InnerException.Message}"
+                    : ex.Message;
+
+                MessageBox.Show($"An error occurred during transfer:\n\n{errorMsg}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                AddStatusMessage($"ERROR: {errorMsg}");
             }
             finally
             {
@@ -115,8 +152,11 @@ namespace TransferPiwigoToDigikam
                 return;
             }
 
-            progressBar.Maximum = e.TotalImages;
-            progressBar.Value = e.ProcessedImages;
+            if (e.TotalImages > 0)
+            {
+                progressBar.Maximum = e.TotalImages;
+                progressBar.Value = Math.Min(e.ProcessedImages, e.TotalImages);
+            }
 
             lblProgress.Text = $"Progress: {e.ProcessedImages} / {e.TotalImages} ({e.PercentComplete}%) - Success: {e.SuccessCount}, Failed: {e.FailureCount}";
         }

@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using TransferPiwigoToDigikam.Models;
 
 namespace TransferPiwigoToDigikam.Services
@@ -155,10 +157,15 @@ namespace TransferPiwigoToDigikam.Services
 
         public string SaveImage(PiwigoImage image, byte[] imageData, string categoryPath)
         {
+            if (imageData == null || imageData.Length == 0)
+            {
+                throw new ArgumentException("Image data cannot be null or empty", nameof(imageData));
+            }
+
             try
             {
-                // Create directory structure based on category path
-                var relativePath = categoryPath.Replace(" / ", "/").Replace("/", Path.DirectorySeparatorChar.ToString());
+                // Clean category path - remove invalid characters
+                var relativePath = SanitizePath(categoryPath.Replace(" / ", "/").Replace("/", Path.DirectorySeparatorChar.ToString()));
                 var targetDir = Path.Combine(_outputDirectory, relativePath);
 
                 if (!Directory.Exists(targetDir))
@@ -166,15 +173,19 @@ namespace TransferPiwigoToDigikam.Services
                     Directory.CreateDirectory(targetDir);
                 }
 
-                // Determine file name
+                // Determine file name and sanitize it
                 var fileName = !string.IsNullOrEmpty(image.File) ? image.File : $"image_{image.Id}.jpg";
+                fileName = SanitizeFileName(fileName);
+
+                // Handle file name conflicts
                 var filePath = Path.Combine(targetDir, fileName);
+                filePath = GetUniqueFilePath(filePath);
 
                 // Save image file
                 File.WriteAllBytes(filePath, imageData);
 
                 // Add to database
-                AddImageToDatabase(image, fileName, relativePath, imageData);
+                AddImageToDatabase(image, Path.GetFileName(filePath), relativePath, imageData);
 
                 return filePath;
             }
@@ -182,6 +193,84 @@ namespace TransferPiwigoToDigikam.Services
             {
                 throw new Exception($"Failed to save image {image.Id}: {ex.Message}", ex);
             }
+        }
+
+        private string SanitizePath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return "Uncategorized";
+            }
+
+            var invalidChars = Path.GetInvalidPathChars();
+            foreach (var c in invalidChars)
+            {
+                path = path.Replace(c, '_');
+            }
+
+            // Also replace some commonly problematic characters
+            path = path.Replace(":", "_").Replace("*", "_").Replace("?", "_")
+                       .Replace("\"", "_").Replace("<", "_").Replace(">", "_")
+                       .Replace("|", "_");
+
+            return path;
+        }
+
+        private string SanitizeFileName(string fileName)
+        {
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                return "unnamed.jpg";
+            }
+
+            var invalidChars = Path.GetInvalidFileNameChars();
+            foreach (var c in invalidChars)
+            {
+                fileName = fileName.Replace(c, '_');
+            }
+
+            // Ensure file has an extension
+            if (!Path.HasExtension(fileName))
+            {
+                fileName += ".jpg";
+            }
+
+            // Trim and ensure it's not too long
+            if (fileName.Length > 200)
+            {
+                var ext = Path.GetExtension(fileName);
+                fileName = fileName.Substring(0, 200 - ext.Length) + ext;
+            }
+
+            return fileName;
+        }
+
+        private string GetUniqueFilePath(string filePath)
+        {
+            if (!File.Exists(filePath))
+            {
+                return filePath;
+            }
+
+            var directory = Path.GetDirectoryName(filePath);
+            var fileNameWithoutExt = Path.GetFileNameWithoutExtension(filePath);
+            var extension = Path.GetExtension(filePath);
+
+            int counter = 1;
+            string newFilePath;
+
+            do
+            {
+                newFilePath = Path.Combine(directory, $"{fileNameWithoutExt}_{counter}{extension}");
+                counter++;
+            } while (File.Exists(newFilePath) && counter < 1000);
+
+            if (counter >= 1000)
+            {
+                throw new Exception($"Too many file name conflicts for: {filePath}");
+            }
+
+            return newFilePath;
         }
 
         private void AddImageToDatabase(PiwigoImage image, string fileName, string relativePath, byte[] imageData)

@@ -72,6 +72,7 @@ namespace TransferPiwigoToDigikam.Services
                 var processedImages = 0;
                 var successCount = 0;
                 var failureCount = 0;
+                var skippedCount = 0;
 
                 foreach (var imageData in allImages)
                 {
@@ -80,6 +81,14 @@ namespace TransferPiwigoToDigikam.Services
 
                     try
                     {
+                        if (string.IsNullOrWhiteSpace(image.ElementUrl))
+                        {
+                            OnStatusChanged($"Skipping image {image.Id} ({image.Name ?? image.File}): No download URL available");
+                            skippedCount++;
+                            processedImages++;
+                            continue;
+                        }
+
                         OnStatusChanged($"Downloading image: {image.Name ?? image.File} ({processedImages + 1}/{totalImages})");
 
                         var imageBytes = _piwigoClient.DownloadImage(image.ElementUrl);
@@ -91,7 +100,7 @@ namespace TransferPiwigoToDigikam.Services
                     }
                     catch (Exception ex)
                     {
-                        OnStatusChanged($"Failed to transfer image {image.Id}: {ex.Message}");
+                        OnStatusChanged($"Failed to transfer image {image.Id} ({image.Name ?? image.File}): {ex.Message}");
                         failureCount++;
                     }
 
@@ -106,7 +115,7 @@ namespace TransferPiwigoToDigikam.Services
                     });
                 }
 
-                OnStatusChanged($"Transfer completed! Success: {successCount}, Failed: {failureCount}");
+                OnStatusChanged($"Transfer completed! Success: {successCount}, Failed: {failureCount}, Skipped: {skippedCount}");
             }
             catch (Exception ex)
             {

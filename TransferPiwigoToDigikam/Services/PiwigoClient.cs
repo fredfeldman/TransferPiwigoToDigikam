@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Web.Script.Serialization;
 using TransferPiwigoToDigikam.Models;
 
@@ -16,6 +17,8 @@ namespace TransferPiwigoToDigikam.Services
         private readonly string _password;
         private CookieContainer _cookies;
         private bool _isLoggedIn;
+        private const int TimeoutSeconds = 30;
+        private const int MaxRetries = 3;
 
         public PiwigoClient(string baseUrl, string username, string password)
         {
@@ -194,24 +197,97 @@ namespace TransferPiwigoToDigikam.Services
 
         public byte[] DownloadImage(string imageUrl)
         {
-            try
+            if (string.IsNullOrWhiteSpace(imageUrl))
             {
-                var request = (HttpWebRequest)WebRequest.Create(imageUrl);
-                request.CookieContainer = _cookies;
-                request.Method = "GET";
+                throw new ArgumentException("Image URL cannot be empty", nameof(imageUrl));
+            }
 
-                using (var response = (HttpWebResponse)request.GetResponse())
-                using (var stream = response.GetResponseStream())
-                using (var memoryStream = new MemoryStream())
+            int retryCount = 0;
+            Exception lastException = null;
+
+            while (retryCount < MaxRetries)
+            {
+                try
                 {
-                    stream.CopyTo(memoryStream);
-                    return memoryStream.ToArray();
+                    var request = (HttpWebRequest)WebRequest.Create(imageUrl);
+                    request.CookieContainer = _cookies;
+                    request.Method = "GET";
+                    request.Timeout = TimeoutSeconds * 1000;
+                    request.ReadWriteTimeout = TimeoutSeconds * 1000;
+
+                    using (var response = (HttpWebResponse)request.GetResponse())
+                    {
+                        if (response.StatusCode != HttpStatusCode.OK)
+                        {
+                            throw new WebException($"Server returned status code: {response.StatusCode}");
+                        }
+
+                        using (var stream = response.GetResponseStream())
+                        using (var memoryStream = new MemoryStream())
+                        {
+                            if (stream == null)
+                            {
+                                throw new Exception("Response stream is null");
+                            }
+
+                            stream.CopyTo(memoryStream);
+                            var data = memoryStream.ToArray();
+
+                            if (data.Length == 0)
+                            {
+                                throw new Exception("Downloaded image has zero bytes");
+                            }
+
+                            return data;
+                        }
+                    }
+                }
+                catch (WebException ex)
+                {
+                    lastException = ex;
+                    retryCount++;
+
+                    if (ex.Status == WebExceptionStatus.Timeout)
+                    {
+                        if (retryCount < MaxRetries)
+                        {
+                            Thread.Sleep(1000 * retryCount);
+                            continue;
+                        }
+                    }
+                    else if (ex.Response is HttpWebResponse errorResponse)
+                    {
+                        if (errorResponse.StatusCode == HttpStatusCode.NotFound)
+                        {
+                            throw new Exception($"Image not found (404): {imageUrl}", ex);
+                        }
+                        else if (errorResponse.StatusCode == HttpStatusCode.Forbidden || 
+                                 errorResponse.StatusCode == HttpStatusCode.Unauthorized)
+                        {
+                            throw new Exception($"Access denied ({errorResponse.StatusCode}): {imageUrl}", ex);
+                        }
+                    }
+
+                    if (retryCount < MaxRetries)
+                    {
+                        Thread.Sleep(1000 * retryCount);
+                        continue;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    lastException = ex;
+                    retryCount++;
+
+                    if (retryCount < MaxRetries)
+                    {
+                        Thread.Sleep(1000 * retryCount);
+                        continue;
+                    }
                 }
             }
-            catch (Exception ex)
-            {
-                throw new Exception($"Failed to download image from {imageUrl}: {ex.Message}", ex);
-            }
+
+            throw new Exception($"Failed to download image after {MaxRetries} attempts from {imageUrl}: {lastException?.Message}", lastException);
         }
 
         public void Logout()
@@ -239,6 +315,8 @@ namespace TransferPiwigoToDigikam.Services
         {
             var request = (HttpWebRequest)WebRequest.Create(url);
             request.CookieContainer = _cookies;
+            request.Timeout = TimeoutSeconds * 1000;
+            request.ReadWriteTimeout = TimeoutSeconds * 1000;
 
             if (!string.IsNullOrEmpty(postData))
             {

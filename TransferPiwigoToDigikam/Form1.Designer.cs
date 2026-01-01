@@ -55,6 +55,8 @@
             // 
             // txtPiwigoUrl
             // 
+            this.txtPiwigoUrl.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.txtPiwigoUrl.Location = new System.Drawing.Point(120, 12);
             this.txtPiwigoUrl.Name = "txtPiwigoUrl";
             this.txtPiwigoUrl.Size = new System.Drawing.Size(400, 20);
@@ -105,6 +107,8 @@
             // 
             // txtOutputDirectory
             // 
+            this.txtOutputDirectory.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.txtOutputDirectory.Location = new System.Drawing.Point(120, 102);
             this.txtOutputDirectory.Name = "txtOutputDirectory";
             this.txtOutputDirectory.Size = new System.Drawing.Size(320, 20);
@@ -112,6 +116,7 @@
             // 
             // btnBrowse
             // 
+            this.btnBrowse.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnBrowse.Location = new System.Drawing.Point(446, 100);
             this.btnBrowse.Name = "btnBrowse";
             this.btnBrowse.Size = new System.Drawing.Size(75, 23);
@@ -122,6 +127,7 @@
             // 
             // btnTransfer
             // 
+            this.btnTransfer.Anchor = System.Windows.Forms.AnchorStyles.Top;
             this.btnTransfer.Location = new System.Drawing.Point(220, 140);
             this.btnTransfer.Name = "btnTransfer";
             this.btnTransfer.Size = new System.Drawing.Size(120, 30);
@@ -132,6 +138,8 @@
             // 
             // progressBar
             // 
+            this.progressBar.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.progressBar.Location = new System.Drawing.Point(15, 200);
             this.progressBar.Name = "progressBar";
             this.progressBar.Size = new System.Drawing.Size(505, 23);
@@ -139,6 +147,9 @@
             // 
             // txtStatus
             // 
+            this.txtStatus.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.txtStatus.Location = new System.Drawing.Point(15, 250);
             this.txtStatus.Multiline = true;
             this.txtStatus.Name = "txtStatus";
@@ -184,6 +195,7 @@
             this.Controls.Add(this.lblUsername);
             this.Controls.Add(this.txtPiwigoUrl);
             this.Controls.Add(this.lblPiwigoUrl);
+            this.MinimumSize = new System.Drawing.Size(550, 480);
             this.Name = "Form1";
             this.Text = "Piwigo to DigiKam Transfer Tool";
             this.ResumeLayout(false);

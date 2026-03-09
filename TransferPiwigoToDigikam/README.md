@@ -1,5 +1,8 @@
 # Piwigo to DigiKam Transfer Tool
 
+> **Status: Working — but needs more testing.**
+> Successfully transferred ~9,000 images in initial use. A small number of failures were observed and are being investigated. Use with caution and verify your output before removing original Piwigo data.
+
 This application transfers images from a Piwigo website to a DigiKam collection, preserving categories, tags, and metadata.
 
 ## Recent Improvements
